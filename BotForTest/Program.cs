@@ -9,30 +9,47 @@ class Program
 
     static async Task Main()
     {
-        var bot = new TelegramBotClient(token);
-
-        using var cts = new CancellationTokenSource();
-
-        var receiverOptions = new ReceiverOptions
+        try
         {
-            AllowedUpdates = Array.Empty<UpdateType>()
-        };
+            Console.WriteLine("STEP 1");
 
-        bot.StartReceiving(
-            updateHandler: HandleUpdate,
-            errorHandler: HandleError,
-            receiverOptions: receiverOptions,
-            cancellationToken: cts.Token
-        );
+            var bot = new TelegramBotClient(token);
 
-        var me = await bot.GetMe();   // ✔ ВАЖНО: без Async
-        Console.WriteLine($"Bot started: @{me.Username}");
+            Console.WriteLine("STEP 2");
 
-        Console.ReadLine();
-        cts.Cancel();
+            using var cts = new CancellationTokenSource();
+
+            var receiverOptions = new ReceiverOptions
+            {
+                AllowedUpdates = null
+            };
+
+            bot.StartReceiving(
+                updateHandler: HandleUpdateAsync,
+                errorHandler: HandleErrorAsync,
+                receiverOptions: receiverOptions,
+                cancellationToken: cts.Token
+            );
+
+            Console.WriteLine("STEP 3 - RECEIVING STARTED");
+
+            var me = await bot.GetMe();
+            Console.WriteLine($"Bot started: @{me.Username}");
+
+            Console.ReadLine();
+            cts.Cancel();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("FATAL ERROR:");
+            Console.WriteLine(ex);
+        }
     }
 
-    private static async Task HandleUpdate(ITelegramBotClient bot, Update update, CancellationToken ct)
+    private static async Task HandleUpdateAsync(
+        ITelegramBotClient bot,
+        Update update,
+        CancellationToken ct)
     {
         if (update.Message?.Text is not { } text) return;
 
@@ -45,7 +62,10 @@ class Program
         );
     }
 
-    private static Task HandleError(ITelegramBotClient bot, Exception ex, CancellationToken ct)
+    private static Task HandleErrorAsync(
+        ITelegramBotClient bot,
+        Exception ex,
+        CancellationToken ct)
     {
         Console.WriteLine($"Error: {ex.Message}");
         return Task.CompletedTask;
