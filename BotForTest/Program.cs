@@ -19,42 +19,35 @@ class Program
         };
 
         bot.StartReceiving(
-            updateHandler: HandleUpdateAsync,
-            errorHandler: HandleErrorAsync,
+            updateHandler: HandleUpdate,
+            errorHandler: HandleError,
             receiverOptions: receiverOptions,
             cancellationToken: cts.Token
         );
 
-        var me = await bot.GetMe();
+        var me = await bot.GetMe();   // ✔ ВАЖНО: без Async
         Console.WriteLine($"Bot started: @{me.Username}");
 
         Console.ReadLine();
         cts.Cancel();
     }
 
-    private static async Task HandleUpdateAsync(
-        ITelegramBotClient bot,
-        Update update,
-        CancellationToken ct)
+    private static async Task HandleUpdate(ITelegramBotClient bot, Update update, CancellationToken ct)
     {
-        if (update.Message is not { } message) return;
-        if (message.Text is not { } text) return;
+        if (update.Message?.Text is not { } text) return;
 
         Console.WriteLine($"User: {text}");
 
         await bot.SendMessage(
-            chatId: message.Chat.Id,
+            chatId: update.Message.Chat.Id,
             text: $"Ты написал: {text}",
             cancellationToken: ct
         );
     }
 
-    private static Task HandleErrorAsync(
-        ITelegramBotClient bot,
-        Exception exception,
-        CancellationToken ct)
+    private static Task HandleError(ITelegramBotClient bot, Exception ex, CancellationToken ct)
     {
-        Console.WriteLine($"Error: {exception.Message}");
+        Console.WriteLine($"Error: {ex.Message}");
         return Task.CompletedTask;
     }
 }
