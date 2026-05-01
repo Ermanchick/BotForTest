@@ -9,52 +9,78 @@ class Program
 
     static async Task Main()
     {
+        Console.WriteLine("BOT STARTING...");
+
         var bot = new TelegramBotClient(token);
 
-        using var cts = new CancellationTokenSource();
+        var me = await bot.GetMe();
+        Console.WriteLine($"Bot online: @{me.Username}");
+
+        var cts = new CancellationTokenSource();
 
         var receiverOptions = new ReceiverOptions
         {
-            AllowedUpdates = new[] { UpdateType.Message }
+            AllowedUpdates = Array.Empty<UpdateType>()
         };
 
         bot.StartReceiving(
-            updateHandler: HandleUpdateAsync,
-            errorHandler: HandleErrorAsync,
+            updateHandler: HandleUpdate,
+            errorHandler: HandleError,
             receiverOptions: receiverOptions,
             cancellationToken: cts.Token
         );
 
-        var me = await bot.GetMe();
-        Console.WriteLine($"Bot started: @{me.Username}");
+        Console.WriteLine("RECEIVING STARTED");
 
         Console.ReadLine();
         cts.Cancel();
     }
 
-    private static async Task HandleUpdateAsync(
+    private static async Task HandleUpdate(
         ITelegramBotClient bot,
         Update update,
         CancellationToken ct)
     {
-        if (update.Message?.Text is not { } text)
-            return;
+        try
+        {
+            Console.WriteLine($"UPDATE: {update.Type}");
 
-        Console.WriteLine($"User: {text}");
+            if (update.Message is null)
+            {
+                Console.WriteLine("NO MESSAGE");
+                return;
+            }
 
-        await bot.SendMessage(
-            chatId: update.Message.Chat.Id,
-            text: $"Echo: {text}",
-            cancellationToken: ct
-        );
+            var text = update.Message.Text;
+
+            Console.WriteLine($"TEXT: {text}");
+
+            if (string.IsNullOrEmpty(text))
+            {
+                Console.WriteLine("EMPTY TEXT");
+                return;
+            }
+
+            await bot.SendMessage(
+                chatId: update.Message.Chat.Id,
+                text: $"Echo: {text}",
+                cancellationToken: ct
+            );
+
+            Console.WriteLine("MESSAGE SENT");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("UPDATE ERROR: " + ex.ToString());
+        }
     }
 
-    private static Task HandleErrorAsync(
+    private static Task HandleError(
         ITelegramBotClient bot,
         Exception exception,
         CancellationToken ct)
     {
-        Console.WriteLine("ERROR: " + exception.Message);
+        Console.WriteLine("FATAL ERROR: " + exception.ToString());
         return Task.CompletedTask;
     }
 }
