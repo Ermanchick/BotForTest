@@ -1,4 +1,5 @@
-﻿using Telegram.Bot;
+﻿using System.Diagnostics;
+using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -9,40 +10,47 @@ class Program
 
     static async Task Main()
     {
+        Log("START PROGRAM");
+
         try
         {
-            Console.WriteLine("STEP 1");
-
+            Log("CREATING BOT CLIENT...");
             var bot = new TelegramBotClient(token);
 
-            Console.WriteLine("STEP 2");
+            Log("BOT CLIENT CREATED");
 
             using var cts = new CancellationTokenSource();
 
             var receiverOptions = new ReceiverOptions
             {
-                AllowedUpdates = null
+                AllowedUpdates = new[] { UpdateType.Message }
             };
+
+            Log("START RECEIVING SETUP");
 
             bot.StartReceiving(
                 updateHandler: HandleUpdateAsync,
-                errorHandler: HandleErrorAsync,
+                pollingErrorHandler: HandleErrorAsync,
                 receiverOptions: receiverOptions,
                 cancellationToken: cts.Token
             );
 
-            Console.WriteLine("STEP 3 - RECEIVING STARTED");
+            Log("START RECEIVING INIT DONE");
 
             var me = await bot.GetMe();
-            Console.WriteLine($"Bot started: @{me.Username}");
 
+            Log($"CONNECTED AS: @{me.Username}");
+
+            Console.WriteLine("BOT IS RUNNING. PRESS ENTER TO STOP.");
             Console.ReadLine();
+
+            Log("STOP SIGNAL RECEIVED");
             cts.Cancel();
         }
         catch (Exception ex)
         {
-            Console.WriteLine("FATAL ERROR:");
-            Console.WriteLine(ex);
+            Log("FATAL ERROR:");
+            Log(ex.ToString());
         }
     }
 
@@ -51,23 +59,62 @@ class Program
         Update update,
         CancellationToken ct)
     {
-        if (update.Message?.Text is not { } text) return;
+        Log("UPDATE RECEIVED");
 
-        Console.WriteLine($"User: {text}");
+        Log($"UPDATE TYPE: {update.Type}");
 
-        await bot.SendMessage(
-            chatId: update.Message.Chat.Id,
-            text: $"Ты написал: {text}",
-            cancellationToken: ct
-        );
+        if (update.Message is null)
+        {
+            Log("MESSAGE IS NULL");
+            return;
+        }
+
+        Log($"CHAT ID: {update.Message.Chat.Id}");
+        Log($"USER ID: {update.Message.From?.Id}");
+        Log($"USERNAME: {update.Message.From?.Username}");
+
+        if (update.Message.Text is null)
+        {
+            Log("TEXT IS NULL");
+            return;
+        }
+
+        var text = update.Message.Text;
+
+        Log($"TEXT: {text}");
+
+        try
+        {
+            Log("SENDING RESPONSE...");
+
+            await bot.SendMessage(
+                chatId: update.Message.Chat.Id,
+                text: $"ECHO: {text}",
+                cancellationToken: ct
+            );
+
+            Log("MESSAGE SENT SUCCESSFULLY");
+        }
+        catch (Exception ex)
+        {
+            Log("SEND MESSAGE ERROR:");
+            Log(ex.ToString());
+        }
     }
 
     private static Task HandleErrorAsync(
         ITelegramBotClient bot,
-        Exception ex,
+        Exception exception,
         CancellationToken ct)
     {
-        Console.WriteLine($"Error: {ex.Message}");
+        Log("TELEGRAM ERROR:");
+        Log(exception.ToString());
         return Task.CompletedTask;
+    }
+
+    // ===== DEBUG LOGGER =====
+    private static void Log(string msg)
+    {
+        Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] {msg}");
     }
 }
